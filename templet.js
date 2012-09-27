@@ -89,6 +89,18 @@
         return data;
     }
 
+	function find(array,fn){
+		if(!array || isNaN(array.length-0) || array.length<=0){
+			return null;
+		}
+		for(var i=0,len=array.length;i<len;i++){
+			if(fn(array[i])){
+				return array[i];
+			}
+		}
+		return null;
+	}
+
     function escapeHTML(string) {
         return String(string).replace(/&(?!\w+;)|[<>"']/g, function(s) {
             return escapeMap[s] || s;
@@ -243,19 +255,20 @@
     function Templet(tpl) {
         this._tpl = tpl;
         this._GlobalFilter = {};
+		this._getTplObj();
     }
 
-    Templet.prototype.render = function(data) {
+	Templet.prototype._getTplObj=function(){
         if (!this._tplObj) {
             this._tplObj = compileSection(this._tpl);
         }
+	}
+
+    Templet.prototype.render = function(data) {
         return renderImpl(this._tpl, data, this._tplObj);
     }
 
     Templet.prototype.renderArray = function(data) {
-        if (!this._tplObj) {
-            this._tplObj = compileSection(this._tpl);
-        }
         var that = this;
         return map(data, function(o, index) {
             return renderImpl(that._tpl, o, that._tplObj, index);
@@ -275,6 +288,20 @@
     Templet.clearFilters = function() {
         _GlobalFilter = null;
     }
+
+	Templet.prototype.getSection=function(name){
+		var childs=this._tplObj.child;
+		if(childs!=null && childs.length>0){
+			var childTplObj=find(childs,function(v){
+				return v.tag==name;
+			});
+			var result=new Templet("");
+			result._tpl=this._tpl;
+			result._tplObj=childTplObj;
+			return result;
+		}
+		return null;
+	}
 
     function render(tpl, obj) {
         var rootTag = compileSection(tpl);
@@ -571,10 +598,11 @@
         function testGetSection() {
             var tpl = "abc{#efg}hello {firstName},{secondName}!{/efg}efg";
             var tplObj = new Templet(tpl);
-            console.log(tplObj.getSection("efg").render({
+            var result=tplObj.getSection("efg").render({
                 firstName: "brooks",
                 secondName: "fan"
-            }))
+            });
+			console.log("Test Get Section:"+(result=="hello brooks,fan!"?"Passed":"Failed"))
         }
 
         function testAll() {
@@ -582,6 +610,7 @@
             testField();
             testCondition();
             testArray();
+			testGetSection();
         }
 
         function testNoEndTag() {
