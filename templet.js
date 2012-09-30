@@ -50,10 +50,10 @@
  *
  */
 
-(function() {
+(function(globalObj) {
 
     //匹配分区的正则表达式
-    var regSecTag = /\{([#^\/?])([\d\w\.\$\+\-\*\/=\>\<=!?@]+)\}/gm,
+    var regSecTag = /\{([#^\/?])([\d\w\.\$\+\-\*\/=\>\<=!?@\"\']+)\}/gm,
 
         //匹配属性的正则表达式
         regFieldTag = /\{([\d\w\$]+|@idx([\+-]\d+)?)((?:\|[\w]+)*)\}/gm,
@@ -578,6 +578,8 @@
 
             var cases = [
 
+                [ "hello {?$.abc=='hallo'}haha {name} {/?}good", { abc: 'hallo', name: "fanjun" }, "hello haha fanjun good" ],
+
                 [ "{?2>1}good{/?}", {}, "good" ],
 
                 [ "hello {?$.abc==1}haha {name} {/?}good", { abc: 1, name: "fanjun" }, "hello haha fanjun good" ],
@@ -650,4 +652,6 @@
 
     })();
 
-})();
+	globalObj.Templet=Templet;
+
+})(this);
