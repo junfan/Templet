@@ -194,7 +194,7 @@
         return rootTag;
     }
 
-    function renderImpl(tpl, obj, rootTag, idx) {
+    function renderImpl(tpl, obj, rootTag, idx,arrayLen) {
         var childs = rootTag.child,
             aStr, section, lastIndex, flag;
         if (!childs || !childs.length > 0) {
@@ -214,7 +214,7 @@
                     if (section) {
                         if (section.length && section.length > 0) {
                             for (var j = 0; j < section.length; j++) {
-                                aStr.push(renderImpl(tpl, section[j], childs[i], j));
+                                aStr.push(renderImpl(tpl, section[j], childs[i], j, section.length));
                             }
                         } else if (typeof section.length == "undefined") {
                             aStr.push(renderImpl(tpl, section, childs[i]));
@@ -227,7 +227,7 @@
                 else if (flag == "?") {
                     try {
                         var __currentObject = obj;
-                        if (eval(processConditionExp(childs[i].tag,idx))) {
+                        if (eval(processConditionExp(childs[i].tag,idx,arrayLen))) {
                             aStr.push(renderImpl(tpl, obj, childs[i]));
                         } else {
 
@@ -243,11 +243,15 @@
         }
     }
 
-    function processConditionExp(exp,idx) {
+    function processConditionExp(exp,idx,len) {
         var str=exp.replace(/\$/g, "__currentObject");
 		idx=(parseInt(idx,10));
+		len=parseInt(len,10);
 		if(!isNaN(idx)){
 			str=str.replace("@idx",idx);
+		}
+		if(!isNaN(len)){
+			str=str.replace("@len",len);
 		}
 		return str;
     }
@@ -355,7 +359,7 @@
             if (match[1].indexOf("@idx") == 0 && idx !== undefined) {
                 segStr.push(applyFilters(eval(match[1].replace("@idx", idx)), match[3], obj))
             } else if (match[1] == "$") {
-                if (!obj) {
+                if (nullOrUndef(obj)) {
                     segStr.push(match[0]);
                 } else {
                     segStr.push(applyFilters(obj.toString(), match[3], obj));
@@ -518,6 +522,8 @@
                 ["hello{sec}", { sec: "abc" }, "helloabc"],
 
                 ["hello{$}", "abc", "helloabc"],
+
+                ["hello{$}", "0", "hello0"],
 
                 ["hello{$}{efg}", "abc", "helloabc{efg}"],
 
