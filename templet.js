@@ -50,13 +50,13 @@
  *
  */
 
-(function(globalObj) {
+;(function(globalObj) {
 
     //匹配分区的正则表达式
-    var regSecTag = /\{([#^\/?])([\d\w\.\$\+\-\*\/=\>\<=!?@\"\']+)\}/gm,
+    var regSecTag = /\{([#^\/?])([\d\w\.\%\$\+\-\*\/=\>\<=!?@\"\']+)\}/gm,
 
         //匹配属性的正则表达式
-        regFieldTag = /\{([\d\w\$]+|@idx([\+-]\d+)?)((?:\|[\w]+)*)\}/gm,
+        regFieldTag = /\{([\d\w\$]+|@idx([\%\+-]\d+)?)((?:\|[\w]+)*)\}/gm,
 
 
         toString = Object.prototype.toString,
@@ -233,7 +233,7 @@
 
                         }
                     } catch (e) {
-                        throw "BadCondition:"+childs[i].tag
+                        throw "BadCondition:"+childs[i].tag+e.toString();
                     }
                 }
                 lastIndex = lastIndex + childs[i].getOuterLen();
@@ -316,24 +316,41 @@
         return obj && obj[name] && typeof obj[name] == "function";
     }
 
-    /**
-     * 对数据应用过滤器
-     */
 
+    function ellipsis(s,len){
+        if(len<=0){
+            len = 1;
+        }
+        if(!s || s.length<len){
+            return s;
+        }
+        else{
+            return s.substr(0,len)+"…";
+        }
+    }
+
+    /**
+     * 对数据应用过滤器,u 大写，l小写，ue unescape
+     */
     function applyFilters(str, matchfuns, obj) {
         if (!matchfuns) {
             return escapeHTML(str);
         }
         var fns = matchfuns.split("|"),
-            filter, bEscape = true;
+            filter, 
+            elps,
+            bEscape = true;
         for (var i = 0; i < fns.length; i++) {
             filter = fns[i];
+            elps=/^l(\d+)$/.exec(filter);
             if (filter == "u") {
                 str = str.toUpperCase()
             } else if (filter == "l") {
                 str = str.toLowerCase()
             } else if (filter == "ue") {
                 bEscape = false;
+            }else if(elps){
+                str = ellipsis(str,elps[1]);
             } else if (hasFunc(obj, filter)) {
                 str = obj[filter].call(obj, str);
             } else if (hasFunc(_GlobalFilter, filter)) {
@@ -365,31 +382,33 @@
                     segStr.push(applyFilters(obj.toString(), match[3], obj));
                 }
             } else {
-                if (nullOrUndef(obj[match[1]])) {
+                if (nullOrUndef(obj) || nullOrUndef(obj[match[1]])) {
                     segStr.push(match[0]);
                 } else {
                     segStr.push(applyFilters(obj[match[1]].toString(), match[3], obj));
                 }
             }
             lastIndex = match.index + match[0].length;
-            //console.log(match);
         }
         if (lastIndex != tplseg.length) {
             segStr.push(tplseg.substr(lastIndex, tplseg.length - lastIndex));
         }
-        //console.log(segStr);
         return segStr.join("");
     }
 
     (function() {
+
+        function Log(s){
+            console.log(s);
+        }
 
         function assert(tpl, data, result) {
             var obj = new Templet(tpl);
             var iRet = (result == obj.render(data))
             if (!iRet) {
                 var rederstr = obj.render(data);
-                console.log("result: " + rederstr + " length:" + rederstr.length);
-                console.log(" exept: " + result + " length:" + result.length);
+                Log("result: " + rederstr + " length:" + rederstr.length);
+                Log(" exept: " + result + " length:" + result.length);
             }
             return iRet;
         }
@@ -399,8 +418,8 @@
             var iRet = (result == obj.renderArray(data))
             if (!iRet) {
                 var rederstr = obj.renderArray(data);
-                console.log("result: " + rederstr + " length:" + rederstr.length);
-                console.log(" exept: " + result + " length:" + result.length);
+                Log("result: " + rederstr + " length:" + rederstr.length);
+                Log(" exept: " + result + " length:" + result.length);
             }
             return iRet;
         }
@@ -476,16 +495,28 @@
                 {
                     "sec": [1, 2]
                 }, "helloabc0abc1"],
+
                 ["hello{#sec}abc{@idx+1}{/sec}",
                 {
                     "sec": [1, 2]
-                }, "helloabc1abc2"]
+                }, "helloabc1abc2"],
+
+                ["hello{#sec}abc{@idx%3}{/sec}",
+                {
+                    "sec": [1, 2]
+                }, "helloabc0abc1"],
+
+
+                ["hello{#sec} {v} you are {@idx+1}{/sec}",
+                {
+                    "sec": [{v:'yes'},{v:'no'}]
+                }, "hello yes you are 1 no you are 2"]
             ]
             for (var i = 0, len = cases.length; i < len; i++) {
                 if (!assert.apply(null, cases[i])) {
-                    console.log("Case " + i + " Failed");
+                    Log("Case " + i + " Failed");
                 } else {
-                    console.log("Case " + i + " Passed");
+                    Log("Case " + i + " Passed");
                 }
             }
         }
@@ -500,9 +531,9 @@
             ];
             for (var i = 0, len = cases.length; i < len; i++) {
                 if (!assertArray.apply(null, cases[i])) {
-                    console.log("Case " + i + " Failed");
+                    Log("Case " + i + " Failed");
                 } else {
-                    console.log("Case " + i + " Passed");
+                    Log("Case " + i + " Passed");
                 }
             }
         }
@@ -573,9 +604,9 @@
 
             for (var i = 0, len = cases.length; i < len; i++) {
                 if (!assert.apply(null, cases[i])) {
-                    console.log("Case " + i + " Failed");
+                    Log("Case " + i + " Failed");
                 } else {
-                    console.log("Case " + i + " Passed");
+                    Log("Case " + i + " Passed");
                 }
             }
         }
@@ -588,6 +619,8 @@
 
                 [ "{?2>1}good{/?}", {}, "good" ],
 
+                [ "{?$.test}test{?$.haha}haha{/?}{?!$.haha}not haha{/?}yes{/?}{?!$.test}no test{/?}", {test:true,haha:false}, "testnot hahayes" ],
+
                 [ "hello {?$.abc==1}haha {name} {/?}good", { abc: 1, name: "fanjun" }, "hello haha fanjun good" ],
 
                 [ "{#abc}<haha {?@idx==0}class=\"set\"{/?}>{$}</haha>{/abc}", { abc: ["ele1","ele2"] }, "<haha class=\"set\">ele1</haha><haha >ele2</haha>" ],
@@ -596,9 +629,9 @@
             ];
             for (var i = 0, len = cases.length; i < len; i++) {
                 if (!assert.apply(null, cases[i])) {
-                    console.log("Case " + i + " Failed");
+                    Log("Case " + i + " Failed");
                 } else {
-                    console.log("Case " + i + " Passed");
+                    Log("Case " + i + " Passed");
                 }
             }
         }
@@ -610,7 +643,7 @@
                 firstName: "brooks",
                 secondName: "fan"
             });
-			console.log("Test Get Section:"+(result=="hello brooks,fan!"?"Passed":"Failed"))
+			Log("Test Get Section:"+(result=="hello brooks,fan!"?"Passed":"Failed"))
         }
 
         function testAll() {
@@ -624,7 +657,7 @@
         function testNoEndTag() {
             var s = "123{#abc}123";
             try {
-                console.log(compileSection(s));
+                Log(compileSection(s));
                 return false;
             } catch (e) {
                 return e == "NoMatchEndTagError";
@@ -634,7 +667,7 @@
         function testNoBeginTag() {
             var s = "123{/abc}123";
             try {
-                console.log(compileSection(s));
+                Log(compileSection(s));
                 return false;
             } catch (e) {
                 return e == "NoMatchBeginTagError";
@@ -642,10 +675,10 @@
         }
 
         function testFillField() {
-            console.log(fillField(" {abc} {efg|u} {@idx+1} ", {
+            Log(fillField(" {abc} {efg|u} {@idx+1} ", {
                 abc: "haha"
             }));
-            console.log(fillField(" {abc} {efg|ue|fnabc} {@idx+1} ", {
+            Log(fillField(" {abc} {efg|ue|fnabc} {@idx+1} ", {
                 abc: "<>",
                 efg: "<>",
                 fnabc: function(a) {
@@ -653,9 +686,7 @@
                 }
             }, 2));
         }
-
-        testAll()
-
+        //testAll()
     })();
 
 	globalObj.Templet=Templet;
